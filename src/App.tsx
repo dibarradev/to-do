@@ -1,228 +1,341 @@
 import { useState, useEffect } from "react";
-import { v4 as uuidv4 } from "uuid";
 import "./App.scss";
 import TaskForm from "./components/TaskForm";
 import TaskList from "./components/TaskList";
 import TaskFilter from "./components/TaskFilter";
-import type { Task, FilterType, Subtask } from "./types";
+import type { Task, FilterType } from "./types";
+import * as taskService from "./services/taskService";
 
 function App() {
   // State for tasks
   const [tasks, setTasks] = useState<Task[]>([]);
   // State for current filter
   const [filter, setFilter] = useState<FilterType>("all");
+  // State for loading
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  // State for connection status
+  const [connectionStatus, setConnectionStatus] = useState<{
+    isConnected: boolean;
+    message: string;
+    details?: unknown;
+  }>({ isConnected: false, message: "Checking connection..." });
 
-  // Get tasks from localStorage on initial load
+  // Check connection with server and MongoDB on startup
   useEffect(() => {
-    const savedTasks = localStorage.getItem("tasks");
-    if (savedTasks) {
+    const checkConnection = async () => {
       try {
-        setTasks(JSON.parse(savedTasks));
-      } catch (e) {
-        console.error("Error parsing tasks from localStorage:", e);
+        console.log("🔍 Checking server connection...");
+        const healthCheck = await taskService.checkServerHealth();
+
+        setConnectionStatus({
+          isConnected: healthCheck.mongodb.connected,
+          message: healthCheck.mongodb.connected
+            ? `✅ Connected to MongoDB (${healthCheck.mongodb.tasksCount} tasks)`
+            : "❌ Not connected to MongoDB",
+          details: healthCheck,
+        });
+
+        console.log("📊 Connection status:", healthCheck);
+      } catch (error) {
+        console.error("❌ Error checking connection:", error);
+        setConnectionStatus({
+          isConnected: false,
+          message: "❌ Connection error with server",
+          details: error,
+        });
       }
-    }
+    };
+
+    checkConnection();
   }, []);
 
-  // Save tasks to localStorage whenever tasks change
+  // Load tasks from MongoDB on startup
   useEffect(() => {
-    localStorage.setItem("tasks", JSON.stringify(tasks));
-  }, [tasks]);
+    const fetchTasks = async () => {
+      try {
+        setIsLoading(true);
+        const tasksFromDB = await taskService.getAllTasks();
+        setTasks(tasksFromDB);
+      } catch (error) {
+        console.error("Error loading tasks:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTasks();
+  }, []);
 
   /**
    * Add a new task
    */
-  const handleAddTask = (text: string) => {
-    const newTask: Task = {
-      id: uuidv4(),
-      text: text,
-      completed: false,
-      subtasks: [],
-    };
-
-    // Add new task to the beginning of the array
-    setTasks((prevTasks) => [newTask, ...prevTasks]);
+  const handleAddTask = async (text: string) => {
+    try {
+      const newTask = await taskService.createTask(text);
+      if (newTask) {
+        setTasks((prevTasks) => [newTask, ...prevTasks]);
+      }
+    } catch (error) {
+      console.error("Error adding task:", error);
+    }
   };
 
   /**
    * Toggle task completion status
    * A task can only be completed if all its subtasks are completed
    */
-  const handleToggleTask = (id: string) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) => {
-        if (task.id !== id) return task;
+  const handleToggleTask = async (id: string) => {
+    const taskToUpdate = tasks.find((task) => task.id === id);
+    if (!taskToUpdate) return;
 
-        // If trying to mark as completed, check if all subtasks are completed
-        if (!task.completed) {
-          const hasActiveSubtasks = task.subtasks.some(
-            (subtask) => !subtask.completed
-          );
-          if (hasActiveSubtasks) {
-            // Cannot complete a task with active subtasks
-            return task;
-          }
-        }
+    // If trying to mark as completed, check subtasks
+    if (!taskToUpdate.completed) {
+      const hasActiveSubtasks = taskToUpdate.subtasks.some(
+        (subtask) => !subtask.completed
+      );
+      if (hasActiveSubtasks) return;
+    }
 
-        return { ...task, completed: !task.completed };
-      })
-    );
+    const updatedTask = {
+      ...taskToUpdate,
+      completed: !taskToUpdate.completed,
+    };
+
+    try {
+      const result = await taskService.updateTask(updatedTask);
+      if (result) {
+        setTasks((prevTasks) =>
+          prevTasks.map((task) => (task.id === id ? updatedTask : task))
+        );
+      }
+    } catch (error) {
+      console.error("Error updating task status:", error);
+    }
   };
 
   /**
    * Delete a task
    */
-  const handleDeleteTask = (id: string) => {
-    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
+  const handleDeleteTask = async (id: string) => {
+    try {
+      const success = await taskService.deleteTask(id);
+      if (success) {
+        setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
+      }
+    } catch (error) {
+      console.error("Error deleting task:", error);
+    }
   };
 
   /**
    * Edit a task's text
    */
-  const handleEditTask = (id: string, newText: string) => {
-    // Only update if the new text is not empty
-    if (newText.trim()) {
-      setTasks((prevTasks) =>
-        prevTasks.map((task) =>
-          task.id === id ? { ...task, text: newText.trim() } : task
-        )
-      );
+  const handleEditTask = async (id: string, newText: string) => {
+    if (!newText.trim()) return;
+
+    const taskToUpdate = tasks.find((task) => task.id === id);
+    if (!taskToUpdate) return;
+
+    const updatedTask = {
+      ...taskToUpdate,
+      text: newText.trim(),
+    };
+
+    try {
+      const result = await taskService.updateTask(updatedTask);
+      if (result) {
+        setTasks((prevTasks) =>
+          prevTasks.map((task) => (task.id === id ? updatedTask : task))
+        );
+      }
+    } catch (error) {
+      console.error("Error editing task:", error);
     }
   };
 
   /**
    * Add a subtask to a task
    */
-  const handleAddSubtask = (taskId: string, text: string) => {
+  const handleAddSubtask = async (taskId: string, text: string) => {
     if (!text.trim()) return;
 
-    const newSubtask: Subtask = {
-      id: uuidv4(),
-      text: text.trim(),
-      completed: false,
-    };
-
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === taskId
-          ? { ...task, subtasks: [...task.subtasks, newSubtask] }
-          : task
-      )
-    );
+    try {
+      const updatedTask = await taskService.addSubtask(taskId, text.trim());
+      if (updatedTask) {
+        setTasks((prevTasks) =>
+          prevTasks.map((task) => (task.id === taskId ? updatedTask : task))
+        );
+      }
+    } catch (error) {
+      console.error("Error adding subtask:", error);
+    }
   };
 
   /**
    * Edit a subtask's text
    */
-  const handleEditSubtask = (
+  const handleEditSubtask = async (
     taskId: string,
     subtaskId: string,
     newText: string
   ) => {
     if (!newText.trim()) return;
 
-    setTasks((prevTasks) =>
-      prevTasks.map((task) => {
-        if (task.id !== taskId) return task;
+    try {
+      const updatedTask = await taskService.updateSubtask(taskId, subtaskId, {
+        text: newText.trim(),
+      });
 
-        const updatedSubtasks = task.subtasks.map((subtask) =>
-          subtask.id === subtaskId
-            ? { ...subtask, text: newText.trim() }
-            : subtask
+      if (updatedTask) {
+        setTasks((prevTasks) =>
+          prevTasks.map((task) => (task.id === taskId ? updatedTask : task))
         );
-
-        return { ...task, subtasks: updatedSubtasks };
-      })
-    );
+      }
+    } catch (error) {
+      console.error("Error editing subtask:", error);
+    }
   };
 
   /**
    * Delete a subtask
    */
-  const handleDeleteSubtask = (taskId: string, subtaskId: string) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) => {
-        if (task.id !== taskId) return task;
-
-        const updatedSubtasks = task.subtasks.filter(
-          (subtask) => subtask.id !== subtaskId
+  const handleDeleteSubtask = async (taskId: string, subtaskId: string) => {
+    try {
+      const updatedTask = await taskService.deleteSubtask(taskId, subtaskId);
+      if (updatedTask) {
+        setTasks((prevTasks) =>
+          prevTasks.map((task) => (task.id === taskId ? updatedTask : task))
         );
-
-        return { ...task, subtasks: updatedSubtasks };
-      })
-    );
+      }
+    } catch (error) {
+      console.error("Error deleting subtask:", error);
+    }
   };
 
   /**
    * Toggle subtask completion status
    * When a subtask is toggled, update the parent task status accordingly
    */
-  const handleToggleSubtask = (taskId: string, subtaskId: string) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) => {
-        if (task.id !== taskId) return task;
+  const handleToggleSubtask = async (taskId: string, subtaskId: string) => {
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task) return;
 
-        // Toggle the specified subtask
-        const updatedSubtasks = task.subtasks.map((subtask) =>
-          subtask.id === subtaskId
-            ? { ...subtask, completed: !subtask.completed }
-            : subtask
-        );
+    const subtask = task.subtasks.find((st) => st.id === subtaskId);
+    if (!subtask) return;
 
+    try {
+      // Update the subtask
+      const updatedTask = await taskService.updateSubtask(taskId, subtaskId, {
+        completed: !subtask.completed,
+      });
+
+      if (updatedTask) {
         // Check if all subtasks are completed
         const allSubtasksCompleted =
-          updatedSubtasks.length > 0 &&
-          updatedSubtasks.every((subtask) => subtask.completed);
+          updatedTask.subtasks.length > 0 &&
+          updatedTask.subtasks.every((st) => st.completed);
 
-        // Update task completion status based on subtasks
-        return {
-          ...task,
-          subtasks: updatedSubtasks,
-          completed: allSubtasksCompleted,
-        };
-      })
-    );
+        // Update the main task status if necessary
+        if (updatedTask.completed !== allSubtasksCompleted) {
+          const taskWithUpdatedStatus = {
+            ...updatedTask,
+            completed: allSubtasksCompleted,
+          };
+
+          const finalUpdatedTask = await taskService.updateTask(
+            taskWithUpdatedStatus
+          );
+          if (finalUpdatedTask) {
+            setTasks((prevTasks) =>
+              prevTasks.map((t) => (t.id === taskId ? finalUpdatedTask : t))
+            );
+          }
+        } else {
+          setTasks((prevTasks) =>
+            prevTasks.map((t) => (t.id === taskId ? updatedTask : t))
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error updating subtask status:", error);
+    }
   };
 
   /**
    * Add a comment to a task
    */
-  const handleAddComment = (taskId: string, comment: string) => {
+  const handleAddComment = async (taskId: string, comment: string) => {
     if (!comment.trim()) return;
 
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === taskId ? { ...task, comment: comment.trim() } : task
-      )
-    );
+    const taskToUpdate = tasks.find((task) => task.id === taskId);
+    if (!taskToUpdate) return;
+
+    const updatedTask = {
+      ...taskToUpdate,
+      comment: comment.trim(),
+    };
+
+    try {
+      const result = await taskService.updateTask(updatedTask);
+      if (result) {
+        setTasks((prevTasks) =>
+          prevTasks.map((task) => (task.id === taskId ? updatedTask : task))
+        );
+      }
+    } catch (error) {
+      console.error("Error adding comment:", error);
+    }
   };
 
   /**
    * Edit a task's comment
    */
-  const handleEditComment = (taskId: string, comment: string) => {
+  const handleEditComment = async (taskId: string, comment: string) => {
     if (!comment.trim()) return;
 
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === taskId ? { ...task, comment: comment.trim() } : task
-      )
-    );
+    const taskToUpdate = tasks.find((task) => task.id === taskId);
+    if (!taskToUpdate) return;
+
+    const updatedTask = {
+      ...taskToUpdate,
+      comment: comment.trim(),
+    };
+
+    try {
+      const result = await taskService.updateTask(updatedTask);
+      if (result) {
+        setTasks((prevTasks) =>
+          prevTasks.map((task) => (task.id === taskId ? updatedTask : task))
+        );
+      }
+    } catch (error) {
+      console.error("Error editing comment:", error);
+    }
   };
 
   /**
    * Delete a task's comment
    */
-  const handleDeleteComment = (taskId: string) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) => {
-        if (task.id !== taskId) return task;
+  const handleDeleteComment = async (taskId: string) => {
+    const taskToUpdate = tasks.find((task) => task.id === taskId);
+    if (!taskToUpdate) return;
 
-        const taskCopy = { ...task };
-        delete taskCopy.comment;
-        return taskCopy;
-      })
-    );
+    // Create a copy without the comment property
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { comment, ...taskWithoutComment } = taskToUpdate;
+
+    try {
+      const result = await taskService.updateTask(taskWithoutComment as Task);
+      if (result) {
+        setTasks((prevTasks) =>
+          prevTasks.map((task) =>
+            task.id === taskId ? (taskWithoutComment as Task) : task
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+    }
   };
 
   /**
@@ -240,36 +353,48 @@ function App() {
   };
 
   return (
-    <div className="todo-app">
-      <header className="app-header">
-        <h1>To-Do</h1>
-      </header>
+    <>
+      <div className="connection-status">
+        <span
+          className={`status-indicator ${
+            connectionStatus.isConnected ? "connected" : "disconnected"
+          }`}
+        >
+          {connectionStatus.message}
+        </span>
+      </div>
+      <div className="todo-app">
+        <header className="app-header">
+          <h1>To-Do</h1>
+          {isLoading && <p className="loading-text">Loading tasks...</p>}
+        </header>
 
-      <main className="app-content">
-        <TaskForm onAddTask={handleAddTask} />
+        <main className="app-content">
+          <TaskForm onAddTask={handleAddTask} />
 
-        <TaskFilter
-          currentFilter={filter}
-          onFilterChange={handleFilterChange}
-          tasksCount={taskCounts}
-        />
+          <TaskFilter
+            currentFilter={filter}
+            onFilterChange={handleFilterChange}
+            tasksCount={taskCounts}
+          />
 
-        <TaskList
-          tasks={tasks}
-          filter={filter}
-          onToggle={handleToggleTask}
-          onDelete={handleDeleteTask}
-          onEdit={handleEditTask}
-          onAddSubtask={handleAddSubtask}
-          onEditSubtask={handleEditSubtask}
-          onDeleteSubtask={handleDeleteSubtask}
-          onToggleSubtask={handleToggleSubtask}
-          onAddComment={handleAddComment}
-          onEditComment={handleEditComment}
-          onDeleteComment={handleDeleteComment}
-        />
-      </main>
-    </div>
+          <TaskList
+            tasks={tasks}
+            filter={filter}
+            onToggle={handleToggleTask}
+            onDelete={handleDeleteTask}
+            onEdit={handleEditTask}
+            onAddSubtask={handleAddSubtask}
+            onEditSubtask={handleEditSubtask}
+            onDeleteSubtask={handleDeleteSubtask}
+            onToggleSubtask={handleToggleSubtask}
+            onAddComment={handleAddComment}
+            onEditComment={handleEditComment}
+            onDeleteComment={handleDeleteComment}
+          />
+        </main>
+      </div>
+    </>
   );
 }
 
