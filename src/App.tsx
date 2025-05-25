@@ -1,16 +1,31 @@
-import { useState, useEffect } from "react";
-import "./App.scss";
-import TaskForm from "./components/TaskForm";
-import TaskList from "./components/TaskList";
-import TaskFilter from "./components/TaskFilter";
-import type { Task, FilterType } from "./types";
-import * as taskService from "./services/taskService";
+import { useState, useEffect } from 'react';
+import './App.scss';
+import TaskForm from './components/TaskForm';
+import TaskList from './components/TaskList';
+import TaskFilter from './components/TaskFilter';
+import Auth from './components/Auth';
+import type { Task, FilterType, User, LoginCredentials, RegisterData } from './types';
+import * as taskService from './services/taskService';
+import * as authService from './services/authService';
 
 function App() {
+  // State for auth
+  const [authState, setAuthState] = useState<{
+    isAuthenticated: boolean;
+    user: User | null;
+    token: string | null;
+    loading: boolean;
+  }>({
+    isAuthenticated: false,
+    user: null,
+    token: null,
+    loading: true,
+  });
+
   // State for tasks
   const [tasks, setTasks] = useState<Task[]>([]);
   // State for current filter
-  const [filter, setFilter] = useState<FilterType>("all");
+  const [filter, setFilter] = useState<FilterType>('all');
   // State for loading
   const [isLoading, setIsLoading] = useState<boolean>(true);
   // State for connection status
@@ -18,29 +33,29 @@ function App() {
     isConnected: boolean;
     message: string;
     details?: unknown;
-  }>({ isConnected: false, message: "Checking connection..." });
+  }>({ isConnected: false, message: 'Checking connection...' });
 
   // Check connection with server and MongoDB on startup
   useEffect(() => {
     const checkConnection = async () => {
       try {
-        console.log("🔍 Checking server connection...");
+        console.log('🔍 Checking server connection...');
         const healthCheck = await taskService.checkServerHealth();
 
         setConnectionStatus({
           isConnected: healthCheck.mongodb.connected,
           message: healthCheck.mongodb.connected
-            ? `✅ Connected to MongoDB (${healthCheck.mongodb.tasksCount} tasks)`
-            : "❌ Not connected to MongoDB",
+            ? `✅ Connected to MongoDB`
+            : '❌ Not connected to MongoDB',
           details: healthCheck,
         });
 
-        console.log("📊 Connection status:", healthCheck);
+        console.log('📊 Connection status:', healthCheck);
       } catch (error) {
-        console.error("❌ Error checking connection:", error);
+        console.error('❌ Error checking connection:', error);
         setConnectionStatus({
           isConnected: false,
-          message: "❌ Connection error with server",
+          message: '❌ Connection error with server',
           details: error,
         });
       }
@@ -49,22 +64,120 @@ function App() {
     checkConnection();
   }, []);
 
-  // Load tasks from MongoDB on startup
+  // Verify authentication when loading the application
   useEffect(() => {
-    const fetchTasks = async () => {
+    const verifyAuth = async () => {
       try {
-        setIsLoading(true);
-        const tasksFromDB = await taskService.getAllTasks();
-        setTasks(tasksFromDB);
+        // Check if there's a saved token
+        const user = await authService.verifyToken();
+
+        if (user) {
+          // Authenticated user
+          setAuthState({
+            isAuthenticated: true,
+            user,
+            token: authService.getToken(),
+            loading: false,
+          });
+
+          // Load the authenticated user's tasks
+          fetchTasks();
+        } else {
+          // No authenticated user
+          setAuthState({
+            isAuthenticated: false,
+            user: null,
+            token: null,
+            loading: false,
+          });
+        }
       } catch (error) {
-        console.error("Error loading tasks:", error);
-      } finally {
-        setIsLoading(false);
+        console.error('Error verifying authentication:', error);
+        setAuthState({
+          isAuthenticated: false,
+          user: null,
+          token: null,
+          loading: false,
+        });
       }
     };
 
-    fetchTasks();
+    verifyAuth();
   }, []);
+
+  // Load tasks from MongoDB when authenticated
+  const fetchTasks = async () => {
+    try {
+      setIsLoading(true);
+      const tasksFromDB = await taskService.getAllTasks();
+      setTasks(tasksFromDB);
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle login
+  const handleLogin = async (credentials: LoginCredentials) => {
+    try {
+      // Call authentication service
+      const result = await authService.login(credentials);
+
+      // Update authentication state
+      setAuthState({
+        isAuthenticated: true,
+        user: result.user,
+        token: result.token,
+        loading: false,
+      });
+
+      // Load user tasks
+      fetchTasks();
+
+      return result;
+    } catch (error: any) {
+      throw error;
+    }
+  };
+
+  // Handle user registration
+  const handleRegister = async (userData: RegisterData) => {
+    try {
+      // Call authentication service
+      const result = await authService.register(userData);
+
+      // Update authentication state
+      setAuthState({
+        isAuthenticated: true,
+        user: result.user,
+        token: result.token,
+        loading: false,
+      });
+
+      // Load user tasks (which will be empty for a new user)
+      fetchTasks();
+
+      return result;
+    } catch (error: any) {
+      throw error;
+    }
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    authService.logout();
+
+    // Reset application state
+    setAuthState({
+      isAuthenticated: false,
+      user: null,
+      token: null,
+      loading: false,
+    });
+
+    setTasks([]);
+  };
 
   /**
    * Add a new task
@@ -73,10 +186,10 @@ function App() {
     try {
       const newTask = await taskService.createTask(text);
       if (newTask) {
-        setTasks((prevTasks) => [newTask, ...prevTasks]);
+        setTasks(prevTasks => [newTask, ...prevTasks]);
       }
     } catch (error) {
-      console.error("Error adding task:", error);
+      console.error('Error adding task:', error);
     }
   };
 
@@ -85,14 +198,12 @@ function App() {
    * A task can only be completed if all its subtasks are completed
    */
   const handleToggleTask = async (id: string) => {
-    const taskToUpdate = tasks.find((task) => task.id === id);
+    const taskToUpdate = tasks.find(task => task.id === id);
     if (!taskToUpdate) return;
 
     // If trying to mark as completed, check subtasks
     if (!taskToUpdate.completed) {
-      const hasActiveSubtasks = taskToUpdate.subtasks.some(
-        (subtask) => !subtask.completed
-      );
+      const hasActiveSubtasks = taskToUpdate.subtasks.some(subtask => !subtask.completed);
       if (hasActiveSubtasks) return;
     }
 
@@ -104,12 +215,10 @@ function App() {
     try {
       const result = await taskService.updateTask(updatedTask);
       if (result) {
-        setTasks((prevTasks) =>
-          prevTasks.map((task) => (task.id === id ? updatedTask : task))
-        );
+        setTasks(prevTasks => prevTasks.map(task => (task.id === id ? updatedTask : task)));
       }
     } catch (error) {
-      console.error("Error updating task status:", error);
+      console.error('Error updating task status:', error);
     }
   };
 
@@ -120,10 +229,10 @@ function App() {
     try {
       const success = await taskService.deleteTask(id);
       if (success) {
-        setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
+        setTasks(prevTasks => prevTasks.filter(task => task.id !== id));
       }
     } catch (error) {
-      console.error("Error deleting task:", error);
+      console.error('Error deleting task:', error);
     }
   };
 
@@ -133,7 +242,7 @@ function App() {
   const handleEditTask = async (id: string, newText: string) => {
     if (!newText.trim()) return;
 
-    const taskToUpdate = tasks.find((task) => task.id === id);
+    const taskToUpdate = tasks.find(task => task.id === id);
     if (!taskToUpdate) return;
 
     const updatedTask = {
@@ -144,12 +253,10 @@ function App() {
     try {
       const result = await taskService.updateTask(updatedTask);
       if (result) {
-        setTasks((prevTasks) =>
-          prevTasks.map((task) => (task.id === id ? updatedTask : task))
-        );
+        setTasks(prevTasks => prevTasks.map(task => (task.id === id ? updatedTask : task)));
       }
     } catch (error) {
-      console.error("Error editing task:", error);
+      console.error('Error editing task:', error);
     }
   };
 
@@ -162,23 +269,17 @@ function App() {
     try {
       const updatedTask = await taskService.addSubtask(taskId, text.trim());
       if (updatedTask) {
-        setTasks((prevTasks) =>
-          prevTasks.map((task) => (task.id === taskId ? updatedTask : task))
-        );
+        setTasks(prevTasks => prevTasks.map(task => (task.id === taskId ? updatedTask : task)));
       }
     } catch (error) {
-      console.error("Error adding subtask:", error);
+      console.error('Error adding subtask:', error);
     }
   };
 
   /**
    * Edit a subtask's text
    */
-  const handleEditSubtask = async (
-    taskId: string,
-    subtaskId: string,
-    newText: string
-  ) => {
+  const handleEditSubtask = async (taskId: string, subtaskId: string, newText: string) => {
     if (!newText.trim()) return;
 
     try {
@@ -187,12 +288,10 @@ function App() {
       });
 
       if (updatedTask) {
-        setTasks((prevTasks) =>
-          prevTasks.map((task) => (task.id === taskId ? updatedTask : task))
-        );
+        setTasks(prevTasks => prevTasks.map(task => (task.id === taskId ? updatedTask : task)));
       }
     } catch (error) {
-      console.error("Error editing subtask:", error);
+      console.error('Error editing subtask:', error);
     }
   };
 
@@ -203,12 +302,10 @@ function App() {
     try {
       const updatedTask = await taskService.deleteSubtask(taskId, subtaskId);
       if (updatedTask) {
-        setTasks((prevTasks) =>
-          prevTasks.map((task) => (task.id === taskId ? updatedTask : task))
-        );
+        setTasks(prevTasks => prevTasks.map(task => (task.id === taskId ? updatedTask : task)));
       }
     } catch (error) {
-      console.error("Error deleting subtask:", error);
+      console.error('Error deleting subtask:', error);
     }
   };
 
@@ -217,10 +314,10 @@ function App() {
    * When a subtask is toggled, update the parent task status accordingly
    */
   const handleToggleSubtask = async (taskId: string, subtaskId: string) => {
-    const task = tasks.find((t) => t.id === taskId);
+    const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
-    const subtask = task.subtasks.find((st) => st.id === subtaskId);
+    const subtask = task.subtasks.find(st => st.id === subtaskId);
     if (!subtask) return;
 
     try {
@@ -232,8 +329,7 @@ function App() {
       if (updatedTask) {
         // Check if all subtasks are completed
         const allSubtasksCompleted =
-          updatedTask.subtasks.length > 0 &&
-          updatedTask.subtasks.every((st) => st.completed);
+          updatedTask.subtasks.length > 0 && updatedTask.subtasks.every(st => st.completed);
 
         // Update the main task status if necessary
         if (updatedTask.completed !== allSubtasksCompleted) {
@@ -242,22 +338,16 @@ function App() {
             completed: allSubtasksCompleted,
           };
 
-          const finalUpdatedTask = await taskService.updateTask(
-            taskWithUpdatedStatus
-          );
+          const finalUpdatedTask = await taskService.updateTask(taskWithUpdatedStatus);
           if (finalUpdatedTask) {
-            setTasks((prevTasks) =>
-              prevTasks.map((t) => (t.id === taskId ? finalUpdatedTask : t))
-            );
+            setTasks(prevTasks => prevTasks.map(t => (t.id === taskId ? finalUpdatedTask : t)));
           }
         } else {
-          setTasks((prevTasks) =>
-            prevTasks.map((t) => (t.id === taskId ? updatedTask : t))
-          );
+          setTasks(prevTasks => prevTasks.map(t => (t.id === taskId ? updatedTask : t)));
         }
       }
     } catch (error) {
-      console.error("Error updating subtask status:", error);
+      console.error('Error updating subtask status:', error);
     }
   };
 
@@ -267,7 +357,7 @@ function App() {
   const handleAddComment = async (taskId: string, comment: string) => {
     if (!comment.trim()) return;
 
-    const taskToUpdate = tasks.find((task) => task.id === taskId);
+    const taskToUpdate = tasks.find(task => task.id === taskId);
     if (!taskToUpdate) return;
 
     const updatedTask = {
@@ -278,12 +368,10 @@ function App() {
     try {
       const result = await taskService.updateTask(updatedTask);
       if (result) {
-        setTasks((prevTasks) =>
-          prevTasks.map((task) => (task.id === taskId ? updatedTask : task))
-        );
+        setTasks(prevTasks => prevTasks.map(task => (task.id === taskId ? updatedTask : task)));
       }
     } catch (error) {
-      console.error("Error adding comment:", error);
+      console.error('Error adding comment:', error);
     }
   };
 
@@ -293,7 +381,7 @@ function App() {
   const handleEditComment = async (taskId: string, comment: string) => {
     if (!comment.trim()) return;
 
-    const taskToUpdate = tasks.find((task) => task.id === taskId);
+    const taskToUpdate = tasks.find(task => task.id === taskId);
     if (!taskToUpdate) return;
 
     const updatedTask = {
@@ -304,12 +392,10 @@ function App() {
     try {
       const result = await taskService.updateTask(updatedTask);
       if (result) {
-        setTasks((prevTasks) =>
-          prevTasks.map((task) => (task.id === taskId ? updatedTask : task))
-        );
+        setTasks(prevTasks => prevTasks.map(task => (task.id === taskId ? updatedTask : task)));
       }
     } catch (error) {
-      console.error("Error editing comment:", error);
+      console.error('Error editing comment:', error);
     }
   };
 
@@ -317,7 +403,7 @@ function App() {
    * Delete a task's comment
    */
   const handleDeleteComment = async (taskId: string) => {
-    const taskToUpdate = tasks.find((task) => task.id === taskId);
+    const taskToUpdate = tasks.find(task => task.id === taskId);
     if (!taskToUpdate) return;
 
     // Create a copy without the comment property
@@ -327,14 +413,12 @@ function App() {
     try {
       const result = await taskService.updateTask(taskWithoutComment as Task);
       if (result) {
-        setTasks((prevTasks) =>
-          prevTasks.map((task) =>
-            task.id === taskId ? (taskWithoutComment as Task) : task
-          )
+        setTasks(prevTasks =>
+          prevTasks.map(task => (task.id === taskId ? (taskWithoutComment as Task) : task))
         );
       }
     } catch (error) {
-      console.error("Error deleting comment:", error);
+      console.error('Error deleting comment:', error);
     }
   };
 
@@ -348,52 +432,76 @@ function App() {
   // Calculate counts for each task status
   const taskCounts = {
     all: tasks.length,
-    active: tasks.filter((task) => !task.completed).length,
-    completed: tasks.filter((task) => task.completed).length,
+    active: tasks.filter(task => !task.completed).length,
+    completed: tasks.filter(task => task.completed).length,
   };
+
+  // If authentication is loading, show indicator
+  if (authState.loading) {
+    return (
+      <div className="loading-container">
+        <p>Loading application...</p>
+      </div>
+    );
+  }
 
   return (
     <>
-      <div className="connection-status">
-        <span
-          className={`status-indicator ${
-            connectionStatus.isConnected ? "connected" : "disconnected"
-          }`}
-        >
-          {connectionStatus.message}
-        </span>
-      </div>
-      <div className="todo-app">
-        <header className="app-header">
-          <h1>To-Do</h1>
-          {isLoading && <p className="loading-text">Loading tasks...</p>}
-        </header>
+      {authState.isAuthenticated ? (
+        <div className="todo-app">
+          <div className="connection-status">
+            <span
+              className={`status-indicator ${
+                connectionStatus.isConnected ? 'connected' : 'disconnected'
+              }`}
+            >
+              {connectionStatus.message}
+            </span>
+          </div>
 
-        <main className="app-content">
-          <TaskForm onAddTask={handleAddTask} />
+          <header className="app-header">
+            <div className="header-content">
+              <h1>To-Do</h1>
+              {authState.user && (
+                <div className="user-info">
+                  <span>Hello, {authState.user.username}</span>
+                  <button onClick={handleLogout} className="logout-button">
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
+            {isLoading && <p className="loading-text">Loading tasks...</p>}
+          </header>
 
-          <TaskFilter
-            currentFilter={filter}
-            onFilterChange={handleFilterChange}
-            tasksCount={taskCounts}
-          />
+          <main className="app-content">
+            <TaskForm onAddTask={handleAddTask} />
 
-          <TaskList
-            tasks={tasks}
-            filter={filter}
-            onToggle={handleToggleTask}
-            onDelete={handleDeleteTask}
-            onEdit={handleEditTask}
-            onAddSubtask={handleAddSubtask}
-            onEditSubtask={handleEditSubtask}
-            onDeleteSubtask={handleDeleteSubtask}
-            onToggleSubtask={handleToggleSubtask}
-            onAddComment={handleAddComment}
-            onEditComment={handleEditComment}
-            onDeleteComment={handleDeleteComment}
-          />
-        </main>
-      </div>
+            <TaskFilter
+              currentFilter={filter}
+              onFilterChange={handleFilterChange}
+              tasksCount={taskCounts}
+            />
+
+            <TaskList
+              tasks={tasks}
+              filter={filter}
+              onToggle={handleToggleTask}
+              onDelete={handleDeleteTask}
+              onEdit={handleEditTask}
+              onAddSubtask={handleAddSubtask}
+              onEditSubtask={handleEditSubtask}
+              onDeleteSubtask={handleDeleteSubtask}
+              onToggleSubtask={handleToggleSubtask}
+              onAddComment={handleAddComment}
+              onEditComment={handleEditComment}
+              onDeleteComment={handleDeleteComment}
+            />
+          </main>
+        </div>
+      ) : (
+        <Auth onLogin={handleLogin} onRegister={handleRegister} />
+      )}
     </>
   );
 }

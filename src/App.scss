@@ -10,6 +10,15 @@
   }
 }
 
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-size: 1.2rem;
+  color: #646cff;
+}
+
 .connection-status {
   margin-top: 1rem;
   position: absolute;
@@ -54,6 +63,44 @@
 .app-header {
   margin-bottom: 2rem;
   text-align: center;
+
+  .header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      font-size: 0.9rem;
+      color: #888;
+
+      span {
+        display: none;
+
+        @media screen and (min-width: 640px) {
+          display: inline;
+        }
+      }
+
+      .logout-button {
+        background-color: transparent;
+        color: #646cff;
+        border: 1px solid #646cff;
+        border-radius: 4px;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s;
+
+        &:hover {
+          background-color: #646cff;
+          color: #fff;
+        }
+      }
+    }
+  }
 
   h1 {
     font-size: 2.5rem;

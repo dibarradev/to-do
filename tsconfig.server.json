@@ -12,9 +12,5 @@
     "noImplicitAny": false,
     "noEmit": false
   },
-  "include": [
-    "src/server.ts",
-    "src/db/**/*.ts",
-    "src/types/index.ts"
-  ]
+  "include": ["src/server.ts", "src/db/**/*.ts", "src/types/index.ts"]
 }

@@ -27,30 +27,29 @@ const connectWithTimeout = async () => {
   try {
     await mongoose.connect(process.env.MONGODB_URI, {
       serverSelectionTimeoutMS: 10000, // 10 seconds
-      maxPoolSize: 1
+      maxPoolSize: 1,
     });
-    
+
     console.log('✅ Connection successful!');
     console.log(`🏠 Host: ${mongoose.connection.host}`);
     console.log(`📊 Database: ${mongoose.connection.name}`);
     console.log(`🔌 Status: ${mongoose.connection.readyState}`);
-    
+
     // Create a test collection
     console.log('\n3. Testing database operation...');
     const TestSchema = new mongoose.Schema({ test: String });
     const TestModel = mongoose.model('Test', TestSchema);
-    
+
     const testDoc = await TestModel.create({ test: 'successful connection' });
     console.log('✅ Test document created:', testDoc._id);
-    
+
     await TestModel.deleteOne({ _id: testDoc._id });
     console.log('✅ Test document deleted');
-    
+
     console.log('\n🎉 MongoDB connection fully functional!');
-    
   } catch (error) {
     console.log('❌ Connection error:', error.message);
-    
+
     if (error.message.includes('authentication failed')) {
       console.log('\n💡 Possible solutions:');
       console.log('   • Verify your username and password');

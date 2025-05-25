@@ -1,6 +1,6 @@
-import { useState } from "react";
-import type { Task, Subtask } from "../types";
-import "./TaskItem.scss";
+import { useState } from 'react';
+import type { Task, Subtask } from '../types';
+import './TaskItem.scss';
 
 interface TaskItemProps {
   task: Task;
@@ -34,16 +34,16 @@ const TaskItem = ({
 }: TaskItemProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(task.text);
-  const [newSubtaskText, setNewSubtaskText] = useState("");
+  const [newSubtaskText, setNewSubtaskText] = useState('');
   const [showSubtasks, setShowSubtasks] = useState(false);
   const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
-  const [editSubtaskText, setEditSubtaskText] = useState("");
+  const [editSubtaskText, setEditSubtaskText] = useState('');
   const [showComment, setShowComment] = useState(false);
   const [isEditingComment, setIsEditingComment] = useState(false);
-  const [commentText, setCommentText] = useState(task.comment || "");
+  const [commentText, setCommentText] = useState(task.comment || '');
 
   // Check if task has active subtasks
-  const hasActiveSubtasks = task.subtasks.some((subtask) => !subtask.completed);
+  const hasActiveSubtasks = task.subtasks.some(subtask => !subtask.completed);
 
   const handleEditSubmit = () => {
     if (editText.trim() !== task.text) {
@@ -53,9 +53,9 @@ const TaskItem = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       handleEditSubmit();
-    } else if (e.key === "Escape") {
+    } else if (e.key === 'Escape') {
       // Cancel editing and restore original text
       setEditText(task.text);
       setIsEditing(false);
@@ -66,7 +66,7 @@ const TaskItem = ({
     e.preventDefault();
     if (newSubtaskText.trim()) {
       onAddSubtask(task.id, newSubtaskText);
-      setNewSubtaskText("");
+      setNewSubtaskText('');
     }
   };
 
@@ -78,9 +78,9 @@ const TaskItem = ({
   };
 
   const handleSubtaskKeyDown = (e: React.KeyboardEvent, subtaskId: string) => {
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       handleEditSubtaskSubmit(subtaskId);
-    } else if (e.key === "Escape") {
+    } else if (e.key === 'Escape') {
       setEditingSubtaskId(null);
     }
   };
@@ -103,33 +103,31 @@ const TaskItem = ({
 
   const handleDeleteComment = () => {
     onDeleteComment(task.id);
-    setCommentText("");
+    setCommentText('');
     setShowComment(false);
   };
 
   const handleCommentKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       handleCommentSubmit();
-    } else if (e.key === "Escape") {
+    } else if (e.key === 'Escape') {
       setIsEditingComment(false);
-      setCommentText(task.comment || "");
+      setCommentText(task.comment || '');
     }
   };
 
   return (
-    <li className={`task-item ${task.completed ? "completed" : ""}`}>
+    <li className={`task-item ${task.completed ? 'completed' : ''}`}>
       <div className="task-header">
         <div className="task-actions-container">
-          {hasActiveSubtasks && (
-            <span className="task-status-badge">Has active subtasks</span>
-          )}
+          {hasActiveSubtasks && <span className="task-status-badge">Has active subtasks</span>}
           <div className="task-actions">
             <button
               className="subtasks-toggle"
               onClick={() => setShowSubtasks(!showSubtasks)}
-              aria-label={showSubtasks ? "Hide subtasks" : "Show subtasks"}
+              aria-label={showSubtasks ? 'Hide subtasks' : 'Show subtasks'}
             >
-              {showSubtasks ? "▼" : "▶"} {task.subtasks.length}
+              {showSubtasks ? '▼' : '▶'} {task.subtasks.length}
             </button>
 
             {!isEditing && !task.completed && (
@@ -158,9 +156,7 @@ const TaskItem = ({
             checked={task.completed}
             onChange={() => onToggle(task.id)}
             disabled={hasActiveSubtasks}
-            aria-label={
-              task.completed ? "Mark as incomplete" : "Mark as complete"
-            }
+            aria-label={task.completed ? 'Mark as incomplete' : 'Mark as complete'}
           />
 
           {isEditing ? (
@@ -168,16 +164,13 @@ const TaskItem = ({
               type="text"
               className="task-edit-input"
               value={editText}
-              onChange={(e) => setEditText(e.target.value)}
+              onChange={e => setEditText(e.target.value)}
               onBlur={handleEditSubmit}
               onKeyDown={handleKeyDown}
               autoFocus
             />
           ) : (
-            <span
-              className="task-text"
-              onDoubleClick={() => !task.completed && setIsEditing(true)}
-            >
+            <span className="task-text" onDoubleClick={() => !task.completed && setIsEditing(true)}>
               {task.text}
               {/* {hasActiveSubtasks && (
                 <span className="task-status-badge">Has active subtasks</span>
@@ -187,15 +180,14 @@ const TaskItem = ({
         </div>
       </div>
 
+      {/* Subtasks section */}
       {showSubtasks && (
         <div className="subtasks-container">
           <ul className="subtasks-list">
-            {task.subtasks.map((subtask) => (
+            {task.subtasks.map(subtask => (
               <li
                 key={subtask.id}
-                className={`subtask-item ${
-                  subtask.completed ? "completed" : ""
-                }`}
+                className={`subtask-item ${subtask.completed ? 'completed' : ''}`}
               >
                 <div className="subtask-content">
                   <input
@@ -203,11 +195,7 @@ const TaskItem = ({
                     className="subtask-checkbox"
                     checked={subtask.completed}
                     onChange={() => onToggleSubtask(task.id, subtask.id)}
-                    aria-label={
-                      subtask.completed
-                        ? "Mark as incomplete"
-                        : "Mark as complete"
-                    }
+                    aria-label={subtask.completed ? 'Mark as incomplete' : 'Mark as complete'}
                   />
 
                   {editingSubtaskId === subtask.id ? (
@@ -215,17 +203,15 @@ const TaskItem = ({
                       type="text"
                       className="subtask-edit-input"
                       value={editSubtaskText}
-                      onChange={(e) => setEditSubtaskText(e.target.value)}
+                      onChange={e => setEditSubtaskText(e.target.value)}
                       onBlur={() => handleEditSubtaskSubmit(subtask.id)}
-                      onKeyDown={(e) => handleSubtaskKeyDown(e, subtask.id)}
+                      onKeyDown={e => handleSubtaskKeyDown(e, subtask.id)}
                       autoFocus
                     />
                   ) : (
                     <span
                       className="subtask-text"
-                      onDoubleClick={() =>
-                        !subtask.completed && startEditSubtask(subtask)
-                      }
+                      onDoubleClick={() => !subtask.completed && startEditSubtask(subtask)}
                     >
                       {subtask.text}
                     </span>
@@ -255,12 +241,13 @@ const TaskItem = ({
             ))}
           </ul>
 
+          {/* Add new subtask form */}
           <form className="add-subtask-form" onSubmit={handleAddSubtask}>
             <input
               type="text"
               className="subtask-input"
               value={newSubtaskText}
-              onChange={(e) => setNewSubtaskText(e.target.value)}
+              onChange={e => setNewSubtaskText(e.target.value)}
               placeholder="Add a subtask..."
               aria-label="New subtask description"
             />
@@ -276,14 +263,14 @@ const TaskItem = ({
         </div>
       )}
 
-      {/* Sección de comentarios */}
+      {/* Comments section */}
       <div className="task-comment-section">
         <button
           className="comment-toggle"
           onClick={() => setShowComment(!showComment)}
-          aria-label={showComment ? "Hide comment" : "Show comment"}
+          aria-label={showComment ? 'Hide comment' : 'Show comment'}
         >
-          {showComment ? "▼ Comment" : "▶ Comment"}
+          {showComment ? '▼ Comment' : '▶ Comment'}
         </button>
 
         {showComment && (
@@ -293,7 +280,7 @@ const TaskItem = ({
                 <textarea
                   className="comment-textarea"
                   value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
+                  onChange={e => setCommentText(e.target.value)}
                   onBlur={handleCommentSubmit}
                   onKeyDown={handleCommentKeyDown}
                   placeholder="Add a comment..."
@@ -308,10 +295,7 @@ const TaskItem = ({
                     Save
                   </button>
                   {task.comment && (
-                    <button
-                      className="delete-button small"
-                      onClick={handleDeleteComment}
-                    >
+                    <button className="delete-button small" onClick={handleDeleteComment}>
                       Delete
                     </button>
                   )}
@@ -321,16 +305,10 @@ const TaskItem = ({
               <div className="comment-display">
                 <p className="comment-text">{task.comment}</p>
                 <div className="comment-actions">
-                  <button
-                    className="edit-button small"
-                    onClick={() => setIsEditingComment(true)}
-                  >
+                  <button className="edit-button small" onClick={() => setIsEditingComment(true)}>
                     Edit
                   </button>
-                  <button
-                    className="delete-button small"
-                    onClick={handleDeleteComment}
-                  >
+                  <button className="delete-button small" onClick={handleDeleteComment}>
                     Delete
                   </button>
                 </div>

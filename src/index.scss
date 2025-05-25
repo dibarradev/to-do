@@ -43,11 +43,11 @@ button {
   background-color: #1a1a1a;
   cursor: pointer;
   transition: border-color 0.25s;
-  
+
   &:hover {
     border-color: #646cff;
   }
-  
+
   &:focus,
   &:focus-visible {
     outline: 4px auto -webkit-focus-ring-color;
@@ -59,7 +59,7 @@ button {
     color: #213547;
     background-color: #ffffff;
   }
-  
+
   button {
     background-color: #f9f9f9;
   }

@@ -1,6 +1,6 @@
-import type { Task, FilterType } from "../types";
-import TaskItem from "./TaskItem";
-import "./TaskList.scss";
+import type { Task, FilterType } from '../types';
+import TaskItem from './TaskItem';
+import './TaskList.scss';
 
 interface TaskListProps {
   tasks: Task[];
@@ -35,20 +35,16 @@ const TaskList = ({
   onDeleteComment,
 }: TaskListProps) => {
   // Filter tasks based on the current filter
-  const filteredTasks = tasks.filter((task) => {
-    if (filter === "all") return true;
-    if (filter === "active") return !task.completed;
-    if (filter === "completed") return task.completed;
+  const filteredTasks = tasks.filter(task => {
+    if (filter === 'all') return true;
+    if (filter === 'active') return !task.completed;
+    if (filter === 'completed') return task.completed;
     return true;
   });
 
   // Check if there are no tasks to display
   if (tasks.length === 0) {
-    return (
-      <div className="empty-message">
-        No tasks found. Add one to get started!
-      </div>
-    );
+    return <div className="empty-message">No tasks found. Add one to get started!</div>;
   }
 
   // Check if there are no tasks matching the current filter
@@ -59,7 +55,7 @@ const TaskList = ({
   return (
     <div className="task-list-container">
       <ul className="task-list">
-        {filteredTasks.map((task) => (
+        {filteredTasks.map(task => (
           <TaskItem
             key={task.id}
             task={task}

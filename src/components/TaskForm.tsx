@@ -1,5 +1,5 @@
-import { useState } from "react";
-import "./TaskForm.scss";
+import { useState } from 'react';
+import './TaskForm.scss';
 
 interface TaskFormProps {
   onAddTask: (text: string) => void;
@@ -9,7 +9,7 @@ interface TaskFormProps {
  * Component for adding new tasks
  */
 const TaskForm = ({ onAddTask }: TaskFormProps) => {
-  const [taskText, setTaskText] = useState("");
+  const [taskText, setTaskText] = useState('');
 
   /**
    * Handles form submission
@@ -22,7 +22,7 @@ const TaskForm = ({ onAddTask }: TaskFormProps) => {
 
     if (trimmedText) {
       onAddTask(trimmedText);
-      setTaskText(""); // Clear the input after adding
+      setTaskText(''); // Clear the input after adding
     }
   };
 
@@ -32,7 +32,7 @@ const TaskForm = ({ onAddTask }: TaskFormProps) => {
         type="text"
         className="task-input"
         value={taskText}
-        onChange={(e) => setTaskText(e.target.value)}
+        onChange={e => setTaskText(e.target.value)}
         placeholder="Add a new task..."
         aria-label="Task description"
       />
