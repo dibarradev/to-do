@@ -1,0 +1,25 @@
+.task-list-container {
+  margin: 0 0 20px 0;
+  max-height: calc(100dvh - 26rem);
+  overflow-y: auto;
+
+  @media screen and (min-width: 481px) {
+    max-height: calc(80dvh - 18rem);
+  }
+}
+
+.task-list {
+  list-style: none;
+  padding: 0;
+}
+
+.empty-message {
+  font-size: 16px;
+  color: #999;
+  text-align: center;
+  padding: 20px;
+  background-color: #2a2a2a;
+  border: 1px dashed #adadad;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
