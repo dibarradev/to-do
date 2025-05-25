@@ -8,6 +8,10 @@ interface TaskListProps {
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (id: string, newText: string) => void;
+  onAddSubtask: (taskId: string, text: string) => void;
+  onEditSubtask: (taskId: string, subtaskId: string, newText: string) => void;
+  onDeleteSubtask: (taskId: string, subtaskId: string) => void;
+  onToggleSubtask: (taskId: string, subtaskId: string) => void;
 }
 
 /**
@@ -19,6 +23,10 @@ const TaskList = ({
   onToggle,
   onDelete,
   onEdit,
+  onAddSubtask,
+  onEditSubtask,
+  onDeleteSubtask,
+  onToggleSubtask,
 }: TaskListProps) => {
   // Filter tasks based on the current filter
   const filteredTasks = tasks.filter((task) => {
@@ -52,6 +60,10 @@ const TaskList = ({
             onToggle={onToggle}
             onDelete={onDelete}
             onEdit={onEdit}
+            onAddSubtask={onAddSubtask}
+            onEditSubtask={onEditSubtask}
+            onDeleteSubtask={onDeleteSubtask}
+            onToggleSubtask={onToggleSubtask}
           />
         ))}
       </ul>

@@ -4,7 +4,7 @@ import "./App.scss";
 import TaskForm from "./components/TaskForm";
 import TaskList from "./components/TaskList";
 import TaskFilter from "./components/TaskFilter";
-import type { Task, FilterType } from "./types";
+import type { Task, FilterType, Subtask } from "./types";
 
 function App() {
   // State for tasks
@@ -37,6 +37,7 @@ function App() {
       id: uuidv4(),
       text: text,
       completed: false,
+      subtasks: [],
     };
 
     // Add new task to the beginning of the array
@@ -45,12 +46,26 @@ function App() {
 
   /**
    * Toggle task completion status
+   * A task can only be completed if all its subtasks are completed
    */
   const handleToggleTask = (id: string) => {
     setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === id ? { ...task, completed: !task.completed } : task
-      )
+      prevTasks.map((task) => {
+        if (task.id !== id) return task;
+
+        // If trying to mark as completed, check if all subtasks are completed
+        if (!task.completed) {
+          const hasActiveSubtasks = task.subtasks.some(
+            (subtask) => !subtask.completed
+          );
+          if (hasActiveSubtasks) {
+            // Cannot complete a task with active subtasks
+            return task;
+          }
+        }
+
+        return { ...task, completed: !task.completed };
+      })
     );
   };
 
@@ -73,6 +88,100 @@ function App() {
         )
       );
     }
+  };
+
+  /**
+   * Add a subtask to a task
+   */
+  const handleAddSubtask = (taskId: string, text: string) => {
+    if (!text.trim()) return;
+
+    const newSubtask: Subtask = {
+      id: uuidv4(),
+      text: text.trim(),
+      completed: false,
+    };
+
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === taskId
+          ? { ...task, subtasks: [...task.subtasks, newSubtask] }
+          : task
+      )
+    );
+  };
+
+  /**
+   * Edit a subtask's text
+   */
+  const handleEditSubtask = (
+    taskId: string,
+    subtaskId: string,
+    newText: string
+  ) => {
+    if (!newText.trim()) return;
+
+    setTasks((prevTasks) =>
+      prevTasks.map((task) => {
+        if (task.id !== taskId) return task;
+
+        const updatedSubtasks = task.subtasks.map((subtask) =>
+          subtask.id === subtaskId
+            ? { ...subtask, text: newText.trim() }
+            : subtask
+        );
+
+        return { ...task, subtasks: updatedSubtasks };
+      })
+    );
+  };
+
+  /**
+   * Delete a subtask
+   */
+  const handleDeleteSubtask = (taskId: string, subtaskId: string) => {
+    setTasks((prevTasks) =>
+      prevTasks.map((task) => {
+        if (task.id !== taskId) return task;
+
+        const updatedSubtasks = task.subtasks.filter(
+          (subtask) => subtask.id !== subtaskId
+        );
+
+        return { ...task, subtasks: updatedSubtasks };
+      })
+    );
+  };
+
+  /**
+   * Toggle subtask completion status
+   * When a subtask is toggled, update the parent task status accordingly
+   */
+  const handleToggleSubtask = (taskId: string, subtaskId: string) => {
+    setTasks((prevTasks) =>
+      prevTasks.map((task) => {
+        if (task.id !== taskId) return task;
+
+        // Toggle the specified subtask
+        const updatedSubtasks = task.subtasks.map((subtask) =>
+          subtask.id === subtaskId
+            ? { ...subtask, completed: !subtask.completed }
+            : subtask
+        );
+
+        // Check if all subtasks are completed
+        const allSubtasksCompleted =
+          updatedSubtasks.length > 0 &&
+          updatedSubtasks.every((subtask) => subtask.completed);
+
+        // Update task completion status based on subtasks
+        return {
+          ...task,
+          subtasks: updatedSubtasks,
+          completed: allSubtasksCompleted,
+        };
+      })
+    );
   };
 
   /**
@@ -110,6 +219,10 @@ function App() {
           onToggle={handleToggleTask}
           onDelete={handleDeleteTask}
           onEdit={handleEditTask}
+          onAddSubtask={handleAddSubtask}
+          onEditSubtask={handleEditSubtask}
+          onDeleteSubtask={handleDeleteSubtask}
+          onToggleSubtask={handleToggleSubtask}
         />
       </main>
     </div>
