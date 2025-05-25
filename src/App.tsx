@@ -31,9 +31,7 @@ function App() {
   // State for connection status
   const [connectionStatus, setConnectionStatus] = useState<{
     isConnected: boolean;
-    message: string;
-    details?: unknown;
-  }>({ isConnected: false, message: 'Checking connection...' });
+  }>({ isConnected: false });
 
   // Check connection with server and MongoDB on startup
   useEffect(() => {
@@ -44,10 +42,6 @@ function App() {
 
         setConnectionStatus({
           isConnected: healthCheck.mongodb.connected,
-          message: healthCheck.mongodb.connected
-            ? `✅ Connected to MongoDB`
-            : '❌ Not connected to MongoDB',
-          details: healthCheck,
         });
 
         console.log('📊 Connection status:', healthCheck);
@@ -55,8 +49,6 @@ function App() {
         console.error('❌ Error checking connection:', error);
         setConnectionStatus({
           isConnected: false,
-          message: '❌ Connection error with server',
-          details: error,
         });
       }
     };
@@ -449,17 +441,14 @@ function App() {
     <>
       {authState.isAuthenticated ? (
         <div className="todo-app">
-          <div className="connection-status">
-            <span
-              className={`status-indicator ${
-                connectionStatus.isConnected ? 'connected' : 'disconnected'
-              }`}
-            >
-              {connectionStatus.message}
-            </span>
-          </div>
-
           <header className="app-header">
+            <div className="connection-status">
+              <span
+                className={`status-indicator ${
+                  connectionStatus.isConnected ? 'connected' : 'disconnected'
+                }`}
+              ></span>
+            </div>
             <div className="header-content">
               <h1>To-Do</h1>
               {authState.user && (
