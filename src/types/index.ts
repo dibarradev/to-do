@@ -11,6 +11,7 @@ export interface Task {
   text: string;
   completed: boolean;
   subtasks: Subtask[];
+  comment?: string;
 }
 
 // Define the filter types

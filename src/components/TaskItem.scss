@@ -303,4 +303,95 @@
       opacity: 0.7;
     }
   }
+
+  .task-comment-section {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dotted #444;
+    width: 100%;
+  }
+
+  .comment-toggle {
+    background: none;
+    border: none;
+    color: #aaa;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px 0;
+    text-align: left;
+
+    &:hover {
+      color: #fff;
+    }
+  }
+
+  .comment-container {
+    margin-top: 10px;
+    padding: 8px;
+    background-color: #333;
+    border-radius: 6px;
+  }
+
+  .comment-edit {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .comment-textarea {
+    width: 100%;
+    min-height: 60px;
+    padding: 8px;
+    background-color: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 4px;
+    color: #fff;
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical;
+
+    &:focus {
+      outline: none;
+      border-color: #646cff;
+    }
+  }
+
+  .comment-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .save-button {
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    cursor: pointer;
+
+    &:hover {
+      background-color: #388e3c;
+    }
+
+    &:disabled {
+      background-color: #555;
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+  }
+
+  .comment-display {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .comment-text {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
 }

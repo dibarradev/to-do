@@ -11,6 +11,9 @@ interface TaskItemProps {
   onEditSubtask: (taskId: string, subtaskId: string, newText: string) => void;
   onDeleteSubtask: (taskId: string, subtaskId: string) => void;
   onToggleSubtask: (taskId: string, subtaskId: string) => void;
+  onAddComment: (taskId: string, comment: string) => void;
+  onEditComment: (taskId: string, comment: string) => void;
+  onDeleteComment: (taskId: string) => void;
 }
 
 /**
@@ -25,6 +28,9 @@ const TaskItem = ({
   onEditSubtask,
   onDeleteSubtask,
   onToggleSubtask,
+  onAddComment,
+  onEditComment,
+  onDeleteComment,
 }: TaskItemProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(task.text);
@@ -32,6 +38,9 @@ const TaskItem = ({
   const [showSubtasks, setShowSubtasks] = useState(false);
   const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
   const [editSubtaskText, setEditSubtaskText] = useState("");
+  const [showComment, setShowComment] = useState(false);
+  const [isEditingComment, setIsEditingComment] = useState(false);
+  const [commentText, setCommentText] = useState(task.comment || "");
 
   // Check if task has active subtasks
   const hasActiveSubtasks = task.subtasks.some((subtask) => !subtask.completed);
@@ -79,6 +88,32 @@ const TaskItem = ({
   const startEditSubtask = (subtask: Subtask) => {
     setEditingSubtaskId(subtask.id);
     setEditSubtaskText(subtask.text);
+  };
+
+  const handleCommentSubmit = () => {
+    if (commentText.trim()) {
+      if (task.comment) {
+        onEditComment(task.id, commentText);
+      } else {
+        onAddComment(task.id, commentText);
+      }
+      setIsEditingComment(false);
+    }
+  };
+
+  const handleDeleteComment = () => {
+    onDeleteComment(task.id);
+    setCommentText("");
+    setShowComment(false);
+  };
+
+  const handleCommentKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleCommentSubmit();
+    } else if (e.key === "Escape") {
+      setIsEditingComment(false);
+      setCommentText(task.comment || "");
+    }
   };
 
   return (
@@ -240,6 +275,70 @@ const TaskItem = ({
           </form>
         </div>
       )}
+
+      {/* Sección de comentarios */}
+      <div className="task-comment-section">
+        <button
+          className="comment-toggle"
+          onClick={() => setShowComment(!showComment)}
+          aria-label={showComment ? "Hide comment" : "Show comment"}
+        >
+          {showComment ? "▼ Comment" : "▶ Comment"}
+        </button>
+
+        {showComment && (
+          <div className="comment-container">
+            {isEditingComment || !task.comment ? (
+              <div className="comment-edit">
+                <textarea
+                  className="comment-textarea"
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  onBlur={handleCommentSubmit}
+                  onKeyDown={handleCommentKeyDown}
+                  placeholder="Add a comment..."
+                  autoFocus
+                />
+                <div className="comment-actions">
+                  <button
+                    className="save-button"
+                    onClick={handleCommentSubmit}
+                    disabled={!commentText.trim()}
+                  >
+                    Save
+                  </button>
+                  {task.comment && (
+                    <button
+                      className="delete-button small"
+                      onClick={handleDeleteComment}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="comment-display">
+                <p className="comment-text">{task.comment}</p>
+                <div className="comment-actions">
+                  <button
+                    className="edit-button small"
+                    onClick={() => setIsEditingComment(true)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="delete-button small"
+                    onClick={handleDeleteComment}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </li>
   );
 };

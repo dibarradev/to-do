@@ -185,6 +185,47 @@ function App() {
   };
 
   /**
+   * Add a comment to a task
+   */
+  const handleAddComment = (taskId: string, comment: string) => {
+    if (!comment.trim()) return;
+
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === taskId ? { ...task, comment: comment.trim() } : task
+      )
+    );
+  };
+
+  /**
+   * Edit a task's comment
+   */
+  const handleEditComment = (taskId: string, comment: string) => {
+    if (!comment.trim()) return;
+
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === taskId ? { ...task, comment: comment.trim() } : task
+      )
+    );
+  };
+
+  /**
+   * Delete a task's comment
+   */
+  const handleDeleteComment = (taskId: string) => {
+    setTasks((prevTasks) =>
+      prevTasks.map((task) => {
+        if (task.id !== taskId) return task;
+
+        const taskCopy = { ...task };
+        delete taskCopy.comment;
+        return taskCopy;
+      })
+    );
+  };
+
+  /**
    * Change the current filter
    */
   const handleFilterChange = (newFilter: FilterType) => {
@@ -223,6 +264,9 @@ function App() {
           onEditSubtask={handleEditSubtask}
           onDeleteSubtask={handleDeleteSubtask}
           onToggleSubtask={handleToggleSubtask}
+          onAddComment={handleAddComment}
+          onEditComment={handleEditComment}
+          onDeleteComment={handleDeleteComment}
         />
       </main>
     </div>
