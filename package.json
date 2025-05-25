@@ -1,7 +1,7 @@
 {
   "name": "to-do",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "A to-do application developed with React, TypeScript, and Vite",
   "author": "dibarradev",

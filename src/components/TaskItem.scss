@@ -36,7 +36,50 @@
 
   .task-text {
     font-size: 16px;
+    padding-right: 0.5rem;
     word-break: break-word;
+    cursor: pointer;
+
+    &:hover:not(.completed) {
+      text-decoration: underline;
+      text-decoration-style: dotted;
+      text-decoration-color: #646cff;
+    }
+  }
+
+  .task-edit-input {
+    flex: 1;
+    font-size: 16px;
+    padding: 6px 8px;
+    border: 1px solid #646cff;
+    border-radius: 4px;
+    background-color: #1a1a1a;
+    color: #fff;
+    width: 100%;
+    margin-right: 0.5rem;
+
+    &:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(100, 108, 255, 0.3);
+    }
+  }
+
+  .task-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .edit-button {
+    background-color: #edb730;
+    color: rgb(0, 0, 0);
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    cursor: pointer;
+
+    &:hover {
+      background-color: #2980b9;
+    }
   }
 
   .delete-button {
@@ -45,7 +88,6 @@
     border: none;
     border-radius: 4px;
     padding: 6px 12px;
-    margin-left: 10px;
     cursor: pointer;
 
     &:hover {

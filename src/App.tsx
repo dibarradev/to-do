@@ -62,6 +62,20 @@ function App() {
   };
 
   /**
+   * Edit a task's text
+   */
+  const handleEditTask = (id: string, newText: string) => {
+    // Only update if the new text is not empty
+    if (newText.trim()) {
+      setTasks((prevTasks) =>
+        prevTasks.map((task) =>
+          task.id === id ? { ...task, text: newText.trim() } : task
+        )
+      );
+    }
+  };
+
+  /**
    * Change the current filter
    */
   const handleFilterChange = (newFilter: FilterType) => {
@@ -95,6 +109,7 @@ function App() {
           filter={filter}
           onToggle={handleToggleTask}
           onDelete={handleDeleteTask}
+          onEdit={handleEditTask}
         />
       </main>
     </div>

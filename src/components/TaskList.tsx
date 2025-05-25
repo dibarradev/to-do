@@ -7,12 +7,19 @@ interface TaskListProps {
   filter: FilterType;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
+  onEdit: (id: string, newText: string) => void;
 }
 
 /**
  * Component that displays the list of tasks
  */
-const TaskList = ({ tasks, filter, onToggle, onDelete }: TaskListProps) => {
+const TaskList = ({
+  tasks,
+  filter,
+  onToggle,
+  onDelete,
+  onEdit,
+}: TaskListProps) => {
   // Filter tasks based on the current filter
   const filteredTasks = tasks.filter((task) => {
     if (filter === "all") return true;
@@ -44,6 +51,7 @@ const TaskList = ({ tasks, filter, onToggle, onDelete }: TaskListProps) => {
             task={task}
             onToggle={onToggle}
             onDelete={onDelete}
+            onEdit={onEdit}
           />
         ))}
       </ul>
